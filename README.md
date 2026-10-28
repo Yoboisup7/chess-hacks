@@ -8,7 +8,7 @@ Stockfish chess engine hack for chess.com. Desktop and mobile versions included.
 
 There are three ways to install Chess Assist. Pick whichever works for you:
 
-### 1. Tampermonkey (recommended)
+### 1. Tampermonkey
 
 Install from Greasy Fork or directly from GitHub:
 
