@@ -891,7 +891,6 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
   watch();
   setInterval(tick, 500);
 
-  // UI
   const root = document.createElement('div'); root.id = 'chess-helper-root';
   const bubble = document.createElement('div'); bubble.id = 'chess-helper-bubble';
   bubble.innerHTML = `<img src="https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wn.png" draggable="false">`;
@@ -1052,7 +1051,6 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
     saveSettings();
   };
 
-  // --- Skins tab logic ---
   const SKIN_CODES = ['wk','wq','wr','wb','wn','wp','bk','bq','br','bb','bn','bp','board','lightTiles','darkTiles'];
   let savedSkins = {};
   try { savedSkins = JSON.parse(localStorage.getItem('ch-skins') || '{}'); } catch {}
@@ -1209,7 +1207,6 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
   maskToggle.checked = skinMaskMode;
   maskToggle.onchange = () => { skinMaskMode = maskToggle.checked; localStorage.setItem('ch-skin-mask', skinMaskMode ? '1' : '0'); applySkins(); };
   renderSkinTiles(); applySkins();
-  // --- End skins ---
 
   const thinkingEl = panel.querySelector('#ch-thinking');
   panel.querySelector('#ch-close').onclick = () => wrap.classList.remove('visible');
@@ -1549,7 +1546,6 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
     }
   });
 
-  // --- Restore saved settings ---
   const saved = loadSettings();
   if (saved) {
     if (saved.toggles) {

@@ -1054,7 +1054,6 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
     saveSettings();
   };
 
-  // --- Skins tab logic ---
   const SKIN_CODES = ['wk','wq','wr','wb','wn','wp','bk','bq','br','bb','bn','bp','board','lightTiles','darkTiles'];
   let savedSkins = {};
   try { savedSkins = JSON.parse(localStorage.getItem('ch-skins') || '{}'); } catch {}
@@ -1211,7 +1210,6 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
   maskToggle.checked = skinMaskMode;
   maskToggle.onchange = () => { skinMaskMode = maskToggle.checked; localStorage.setItem('ch-skin-mask', skinMaskMode ? '1' : '0'); applySkins(); };
   renderSkinTiles(); applySkins();
-  // --- End skins ---
 
   let bx = window.innerWidth - 64, by = window.innerHeight * 0.4;
   let bDrag = false, bMoved = false, bsx = 0, bsy = 0;
@@ -1335,7 +1333,6 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
     saveSettings();
   };
 
-  // --- Restore saved settings ---
   const saved = loadSettings();
   if (saved) {
     if (saved.toggles) {
