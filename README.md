@@ -4,6 +4,26 @@ Stockfish chess engine hack for chess.com. Desktop and mobile versions included.
 
 ![Chess Assist UI](.github/screenshot.png)
 
+## Features
+
+- **Auto-play** — engine plays the best move automatically each turn with anti-repetition to avoid draw loops
+- **Move delay** — random delay before auto-play moves (0–15s) to simulate human thinking time
+- **Best move arrows** — green arrow showing the engine's top pick
+- **Hidden arrows** — subtle square shading instead of visible arrows for a less obvious look
+- **Opponent's best move** — red arrow predicting the opponent's best reply
+- **Win % eval bar** — live vertical bar showing win probability from Stockfish evaluation
+- **Cheat detection** — real-time CPL, accuracy %, best move rate, and suspicion gauge
+- **Opponent / You toggle** — track the opponent's accuracy or your own with full move history
+- **Re-analyze game** — replay all moves through the engine to recalculate stats
+- **Custom piece skins** — upload custom images for any piece (both colors)
+- **Board themes** — custom board background image
+- **Tile overlays** — separate images for light and dark squares
+- **Adjustable depth** — engine search depth from 1 to 24 (default 16)
+- **Customizable keybinds** — assign hotkeys to any toggle
+- **Tabbed UI** — Gameplay / Detection / Skins in a draggable panel
+- All skins persist in localStorage across sessions
+- Runs entirely client-side, no data sent anywhere
+
 ## Install — pick one
 
 There are three ways to install Chess Assist. Pick whichever works for you:
@@ -27,9 +47,7 @@ See below under each version for the bookmarklet loader URL.
 
 ## Desktop (chess-assist.js)
 
-**Features:** Stockfish 19 WASM engine, adjustable depth (1–24, default 16), best-move green arrow, hidden arrows (subtle shading), auto-play with anti-repetition, move delay (random human-like timing), opponent's best move (red arrow, works on both turns), live win% eval bar, live engine detection (opponent cheat detector), custom piece/board/tile skins, auto queen promotion, customizable keybinds for all toggles, info tooltips, tabbed UI (Gameplay / Detection / Skins), draggable panel + icon, thinking indicator, hide all mode, MultiPV 3.
-
-### Usage — Loader Bookmarklet (recommended)
+### Usage — Loader Bookmarklet
 
 Always runs the latest version from GitHub:
 
@@ -84,7 +102,7 @@ Always runs the latest version from GitHub:
 
 Same features as desktop (including skins, live win% eval bar and engine detection) except no keybind system and no hide-all toggle (mobile doesn't use keyboards). Touch-optimized with larger targets (48px bubble, 28px switches, 22px slider thumbs), close button on panel, slightly longer timeouts for slower devices.
 
-### Usage — Loader Bookmarklet (recommended)
+### Usage — Loader Bookmarklet
 
 Always runs the latest version from GitHub:
 
