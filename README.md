@@ -2,7 +2,7 @@
 
 Stockfish chess engine hack for chess.com. Desktop and mobile versions included.
 
-![Chess Assist UI](.github/screenshot.png)
+![Chess Assist UI](https://github.com/ThatKidGlitchy/chess-hacks/releases/download/v1.0.0/screenshot.png)
 
 ## Install
 
