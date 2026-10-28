@@ -17,7 +17,7 @@ Open the raw link with Tampermonkey installed and it will offer to install the s
 
 ### Chrome Extension
 
-Download the latest `chess-assist-extension.zip` from releases, unzip, and load as an unpacked extension at `chrome://extensions` with Developer mode on.
+Download [`chess-assist-extension.zip`](https://github.com/ThatKidGlitchy/chess-hacks/releases/latest/download/chess-assist-extension.zip) from [releases](https://github.com/ThatKidGlitchy/chess-hacks/releases), unzip, and load as an unpacked extension at `chrome://extensions` with Developer mode on.
 
 ### Bookmarklet
 
