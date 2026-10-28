@@ -4,9 +4,11 @@ Stockfish chess engine hack for chess.com. Desktop and mobile versions included.
 
 ![Chess Assist UI](.github/screenshot.png)
 
-## Install
+## Install — pick one
 
-### Tampermonkey (recommended)
+There are three ways to install Chess Assist. Pick whichever works for you:
+
+### 1. Tampermonkey (recommended)
 
 Install from Greasy Fork or directly from GitHub:
 
@@ -15,11 +17,11 @@ Install from Greasy Fork or directly from GitHub:
 
 Open the raw link with Tampermonkey installed and it will offer to install the script. Updates automatically.
 
-### Chrome Extension
+### 2. Chrome Extension
 
 Download [`chess-assist-extension.zip`](https://github.com/ThatKidGlitchy/chess-hacks/releases/latest/download/chess-assist-extension.zip) from [releases](https://github.com/ThatKidGlitchy/chess-hacks/releases), unzip, and load as an unpacked extension at `chrome://extensions` with Developer mode on.
 
-### Bookmarklet
+### 3. Bookmarklet
 
 See below under each version for the bookmarklet loader URL.
 
