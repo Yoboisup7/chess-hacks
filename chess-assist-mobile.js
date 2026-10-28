@@ -71,6 +71,23 @@
 
   window.chessHelper = { autoPlay: false, showArrow: false, hiddenArrow: false, showOpponent: false, showEval: false, detection: true };
 
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem('ch-settings');
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch { return null; }
+  }
+  function saveSettings() {
+    try {
+      localStorage.setItem('ch-settings', JSON.stringify({
+        toggles: { autoPlay: window.chessHelper.autoPlay, showArrow: window.chessHelper.showArrow, hiddenArrow: window.chessHelper.hiddenArrow, showOpponent: window.chessHelper.showOpponent, showEval: window.chessHelper.showEval, detection: window.chessHelper.detection },
+        depth: ENGINE_DEPTH, delayMin: DELAY_MIN, delayMax: DELAY_MAX, delayEnabled: DELAY_ENABLED,
+        detTarget: detTarget
+      }));
+    } catch {}
+  }
+
   const detection = { oppMoves: 0, totalCpl: 0, bestMoves: 0, topThree: 0, blunders: 0, lastOppEvalCp: null, lastOppEvalFen: null, lastMyEvalCp: null, lastMyEvalFen: null };
   const moveLog = [];
   let detTarget = 'opponent';
@@ -1013,6 +1030,7 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
     panel.querySelector('#ch-det-self').style.background = 'rgba(255,255,255,0.06)';
     panel.querySelector('#ch-det-self').style.color = 'rgba(255,255,255,0.5)';
     recalcDetection();
+    saveSettings();
   };
   panel.querySelector('#ch-det-self').onclick = () => {
     if (detTarget === 'self') return;
@@ -1022,6 +1040,7 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
     panel.querySelector('#ch-det-opp').style.background = 'rgba(255,255,255,0.06)';
     panel.querySelector('#ch-det-opp').style.color = 'rgba(255,255,255,0.5)';
     recalcDetection();
+    saveSettings();
   };
 
   // --- Skins tab logic ---
@@ -1225,32 +1244,39 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
   panel.querySelector('#ch-depth').oninput = (e) => {
     ENGINE_DEPTH = parseInt(e.target.value);
     panel.querySelector('#ch-depth-val').textContent = ENGINE_DEPTH;
+    saveSettings();
   };
   panel.querySelector('#ch-delay-toggle').onchange = (e) => {
     DELAY_ENABLED = e.target.checked;
     panel.querySelector('#ch-delay-sliders').style.display = e.target.checked ? '' : 'none';
+    saveSettings();
   };
   panel.querySelector('#ch-delay-min').oninput = (e) => {
     DELAY_MIN = parseFloat(e.target.value);
     if (DELAY_MIN > DELAY_MAX) { DELAY_MAX = DELAY_MIN; panel.querySelector('#ch-delay-max').value = DELAY_MAX; panel.querySelector('#ch-delay-max-val').textContent = DELAY_MAX + 's'; }
     panel.querySelector('#ch-delay-min-val').textContent = DELAY_MIN + 's';
+    saveSettings();
   };
   panel.querySelector('#ch-delay-max').oninput = (e) => {
     DELAY_MAX = parseFloat(e.target.value);
     if (DELAY_MAX < DELAY_MIN) { DELAY_MIN = DELAY_MAX; panel.querySelector('#ch-delay-min').value = DELAY_MIN; panel.querySelector('#ch-delay-min-val').textContent = DELAY_MIN + 's'; }
     panel.querySelector('#ch-delay-max-val').textContent = DELAY_MAX + 's';
+    saveSettings();
   };
   panel.querySelector('#ch-arrow').onchange = (e) => {
     window.chessHelper.showArrow = e.target.checked;
     if (!e.target.checked) clearArrows(); else { lastFen = ''; tick(); }
+    saveSettings();
   };
   panel.querySelector('#ch-hidden').onchange = (e) => {
     window.chessHelper.hiddenArrow = e.target.checked;
     if (!e.target.checked) clearShading(); else { lastFen = ''; tick(); }
+    saveSettings();
   };
   panel.querySelector('#ch-auto').onchange = (e) => {
     window.chessHelper.autoPlay = e.target.checked;
     if (e.target.checked) { lastFen = ''; lastMovedFen = ''; waitingForOpponent = false; tick(); for (let i = 1; i <= 5; i++) setTimeout(tick, i * 1000); }
+    saveSettings();
   };
   panel.querySelector('#ch-analyze').onclick = async () => {
     const btn = panel.querySelector('#ch-analyze');
@@ -1289,12 +1315,47 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
     window.chessHelper.showOpponent = e.target.checked;
     if (!e.target.checked) clearOpponentArrow();
     else { lastFen = ''; tick(); }
+    saveSettings();
   };
   panel.querySelector('#ch-eval').onchange = (e) => {
     window.chessHelper.showEval = e.target.checked;
     evalBar.style.display = e.target.checked ? '' : 'none';
     if (e.target.checked) { lastFen = ''; lastOppFen = ''; tick(); }
+    saveSettings();
   };
+
+  // --- Restore saved settings ---
+  const saved = loadSettings();
+  if (saved) {
+    if (saved.toggles) {
+      Object.assign(window.chessHelper, saved.toggles);
+      const tmap = { showArrow: '#ch-arrow', hiddenArrow: '#ch-hidden', autoPlay: '#ch-auto', showOpponent: '#ch-opponent', showEval: '#ch-eval' };
+      for (const [k, sel] of Object.entries(tmap)) {
+        const cb = panel.querySelector(sel);
+        if (cb) cb.checked = !!saved.toggles[k];
+      }
+      if (saved.toggles.showEval) evalBar.style.display = '';
+    }
+    if (typeof saved.depth === 'number') {
+      ENGINE_DEPTH = saved.depth;
+      const ds = panel.querySelector('#ch-depth'); if (ds) ds.value = ENGINE_DEPTH;
+      const dv = panel.querySelector('#ch-depth-val'); if (dv) dv.textContent = ENGINE_DEPTH;
+    }
+    if (typeof saved.delayEnabled === 'boolean') {
+      DELAY_ENABLED = saved.delayEnabled;
+      const dt = panel.querySelector('#ch-delay-toggle'); if (dt) dt.checked = DELAY_ENABLED;
+      const dsl = panel.querySelector('#ch-delay-sliders'); if (dsl) dsl.style.display = DELAY_ENABLED ? '' : 'none';
+    }
+    if (typeof saved.delayMin === 'number') { DELAY_MIN = saved.delayMin; const s = panel.querySelector('#ch-delay-min'); if (s) s.value = DELAY_MIN; const v = panel.querySelector('#ch-delay-min-val'); if (v) v.textContent = DELAY_MIN + 's'; }
+    if (typeof saved.delayMax === 'number') { DELAY_MAX = saved.delayMax; const s = panel.querySelector('#ch-delay-max'); if (s) s.value = DELAY_MAX; const v = panel.querySelector('#ch-delay-max-val'); if (v) v.textContent = DELAY_MAX + 's'; }
+    if (saved.detTarget === 'self') {
+      detTarget = 'self';
+      panel.querySelector('#ch-det-self').style.background = 'var(--ch-accent)';
+      panel.querySelector('#ch-det-self').style.color = '#fff';
+      panel.querySelector('#ch-det-opp').style.background = 'rgba(255,255,255,0.06)';
+      panel.querySelector('#ch-det-opp').style.color = 'rgba(255,255,255,0.5)';
+    }
+  }
 
   console.log('chess helper (mobile) loaded');
 })();
