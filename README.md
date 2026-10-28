@@ -21,6 +21,7 @@ Stockfish chess engine hack for chess.com. Desktop and mobile versions included.
 - **Adjustable depth** — engine search depth from 1 to 24 (default 16)
 - **Customizable keybinds** — assign hotkeys to any toggle
 - **Tabbed UI** — Gameplay / Detection / Skins in a draggable panel
+- All settings persist in localStorage across page reloads (toggles, depth, delay, keybinds, detection target)
 - All skins persist in localStorage across sessions
 - Runs entirely client-side, no data sent anywhere
 
