@@ -2,7 +2,7 @@
 // @name         Chess Assist
 // @namespace    https://github.com/ThatKidGlitchy/chess-hacks
 // @version      1.0.0
-// @description  Stockfish-powered chess.com overlay — auto-play, best move arrows, win % eval bar, cheat detection (CPL/accuracy), custom piece skins, board themes, and tile overlays.
+// @description  Stockfish-powered chess.com assistant with auto-play, best move arrows, opponent move prediction, win % eval bar, real-time cheat detection, and custom skins.
 // @author       ThatKidGlitchy
 // @match        *://*.chess.com/*
 // @grant        none
