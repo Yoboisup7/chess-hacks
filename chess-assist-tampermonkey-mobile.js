@@ -8,10 +8,6 @@
 // @supportURL   https://github.com/ThatKidGlitchy/chess-hacks/issues
 // @updateURL    https://raw.githubusercontent.com/ThatKidGlitchy/chess-hacks/main/chess-assist-tampermonkey-mobile.js
 // @downloadURL  https://raw.githubusercontent.com/ThatKidGlitchy/chess-hacks/main/chess-assist-tampermonkey-mobile.js
-// @match        *://*.chess.com/*
-// @grant        none
-// @run-at       document-idle
-// ==/UserScript==
 
 (() => {
   if (window.__chessHelper) return console.warn('already loaded');
@@ -833,7 +829,7 @@
   async function tick() {
     if ((!window.chessHelper.autoPlay && !window.chessHelper.showArrow && !window.chessHelper.hiddenArrow && !window.chessHelper.showOpponent && !window.chessHelper.showEval && !window.chessHelper.detection) || processing) return;
     if (!inActiveGame()) return;
-    if (window.chessHelper.detection && !syncDetectionGame()) return;
+    if (window.chessHelper.detection) syncDetectionGame();
     const myTurn = isMyTurn();
     if (myTurn === null) return;
     if (!myTurn) {

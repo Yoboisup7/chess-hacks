@@ -818,7 +818,7 @@
   async function tick() {
     if ((!window.chessHelper.autoPlay && !window.chessHelper.showArrow && !window.chessHelper.hiddenArrow && !window.chessHelper.showOpponent && !window.chessHelper.showEval && !window.chessHelper.detection) || processing) return;
     if (!inActiveGame()) return;
-    if (window.chessHelper.detection && !syncDetectionGame()) return;
+    if (window.chessHelper.detection) syncDetectionGame();
     const myTurn = isMyTurn();
     if (myTurn === null) return;
     if (!myTurn) {

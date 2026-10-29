@@ -8,10 +8,6 @@
 // @supportURL   https://github.com/ThatKidGlitchy/chess-hacks/issues
 // @updateURL    https://raw.githubusercontent.com/ThatKidGlitchy/chess-hacks/main/chess-assist-tampermonkey.js
 // @downloadURL  https://raw.githubusercontent.com/ThatKidGlitchy/chess-hacks/main/chess-assist-tampermonkey.js
-// @match        *://*.chess.com/*
-// @grant        none
-// @run-at       document-idle
-// ==/UserScript==
 
 (() => {
   if (window.__chessHelper) return console.warn('already loaded');
@@ -338,6 +334,9 @@
     const savedMoves = Array.isArray(saved?.gameMoves) ? saved.gameMoves : [];
     const commonLength = Math.min(currentMoves.length, savedMoves.length);
     const historyMatches = savedMoves.slice(0, commonLength).every((move, i) => move === currentMoves[i]);
+
+    // On pages without a stable game ID, wait for the move list to load before
+    // deciding whether a cached snapshot belongs to this game.
     if (!identity.stable && savedMoves.length && currentMoves.length < savedMoves.length && historyMatches) return false;
 
     activeDetectionKey = identity.key;
@@ -346,6 +345,7 @@
       oppMoves: 0, totalCpl: 0, bestMoves: 0, topThree: 0, blunders: 0,
       lastOppEvalCp: null, lastOppEvalFen: null, lastMyEvalCp: null, lastMyEvalFen: null
     });
+
     const canRestore = saved && (identity.stable || (savedMoves.length <= currentMoves.length && historyMatches));
     if (canRestore) {
       const savedLog = Array.isArray(saved.moveLog) ? saved.moveLog : [];
@@ -845,7 +845,7 @@
   async function tick() {
     if ((!window.chessHelper.autoPlay && !window.chessHelper.showArrow && !window.chessHelper.hiddenArrow && !window.chessHelper.showOpponent && !window.chessHelper.showEval && !window.chessHelper.detection) || processing) return;
     if (!inActiveGame()) return;
-    if (window.chessHelper.detection && !syncDetectionGame()) return;
+    if (window.chessHelper.detection) syncDetectionGame();
     const myTurn = isMyTurn();
     if (myTurn === null) return;
     if (!myTurn) {
