@@ -378,12 +378,20 @@
 
   function isMyTurn() {
     const b = getBoard();
-    if (b?.game?.getFEN) { const turn = b.game.getFEN().split(' ')[1]; return turn === getMyColor(); }
     const bottom = document.querySelector('.clock-bottom, .clock-component-bottom');
-    if (bottom && bottom.classList.contains('clock-player-turn')) return true;
     const top = document.querySelector('.clock-top, .clock-component-top');
-    if (top && top.classList.contains('clock-player-turn')) return false;
-    if (bottom && !top) return false;
+    const bottomActive = Boolean(bottom?.classList.contains('clock-player-turn'));
+    const topActive = Boolean(top?.classList.contains('clock-player-turn'));
+
+    if (bottomActive !== topActive) return bottomActive;
+    if (b?.game?.getFEN) {
+      const fields = b.game.getFEN().split(' ');
+      const turn = fields[1];
+      const moveNumber = parseInt(fields[5], 10);
+      if (turn === 'w' && moveNumber === 1 && bottom && top && !bottomActive && !topActive) return false;
+      return turn === getMyColor();
+    }
+    if (bottom && !top) return bottomActive;
     if (top && !bottom) return false;
     return false;
   }
