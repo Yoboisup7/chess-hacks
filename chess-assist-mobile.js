@@ -376,7 +376,7 @@
       const fields = b.game.getFEN().split(' ');
       const turn = fields[1];
       const moveNumber = parseInt(fields[5], 10);
-      if (turn === 'w' && moveNumber === 1 && getGameMoves().length === 0 && !bottomActive && !topActive) return null;
+      if (turn === 'w' && moveNumber === 1 && getGameMoves().length === 0 && !bottomActive && !topActive) return getMyColor() === 'w';
       if (turn === 'w' || turn === 'b') return turn === getMyColor();
       return null;
     }

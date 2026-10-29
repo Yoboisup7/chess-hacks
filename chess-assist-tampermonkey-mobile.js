@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Chess Assist (Mobile)
 // @namespace    https://github.com/ThatKidGlitchy/chess-hacks
-// @version      1.1.10
+// @version      1.1.11
 // @description  Stockfish-powered chess.com assistant with auto-play, best move arrows, opponent move prediction, win percent eval bar, real-time cheat detection against opponents, and custom skins.
 // @author       ThatKidGlitchy
 // @homepageURL  https://github.com/ThatKidGlitchy/chess-hacks
@@ -391,7 +391,7 @@
       const fields = b.game.getFEN().split(' ');
       const turn = fields[1];
       const moveNumber = parseInt(fields[5], 10);
-      if (turn === 'w' && moveNumber === 1 && getGameMoves().length === 0 && !bottomActive && !topActive) return null;
+      if (turn === 'w' && moveNumber === 1 && getGameMoves().length === 0 && !bottomActive && !topActive) return getMyColor() === 'w';
       if (turn === 'w' || turn === 'b') return turn === getMyColor();
       return null;
     }
