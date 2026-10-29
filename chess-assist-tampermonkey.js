@@ -1,13 +1,16 @@
 // ==UserScript==
 // @name         Chess Assist
 // @namespace    https://github.com/ThatKidGlitchy/chess-hacks
-// @version      1.1.12
+// @version      1.1.13
 // @description  Stockfish-powered chess.com assistant with auto-play, best move arrows, opponent move prediction, win percent eval bar, real-time cheat detection against opponents, and custom skins.
 // @author       ThatKidGlitchy
 // @homepageURL  https://github.com/ThatKidGlitchy/chess-hacks
 // @supportURL   https://github.com/ThatKidGlitchy/chess-hacks/issues
 // @updateURL    https://raw.githubusercontent.com/ThatKidGlitchy/chess-hacks/main/chess-assist-tampermonkey.js
 // @downloadURL  https://raw.githubusercontent.com/ThatKidGlitchy/chess-hacks/main/chess-assist-tampermonkey.js
+// @match        *://*.chess.com/*
+// @grant        none
+// ==/UserScript==
 
 (() => {
   if (window.__chessHelper) return console.warn('already loaded');
@@ -858,7 +861,6 @@
       clearShading();
       if (fen) {
         try {
-          thinkingEl.classList.add('active');
           const candidates = await queryLocal(fen, ENGINE_DEPTH);
           const om = candidates.length ? candidates[0].move : null;
           if (candidates.length && candidates[0].cp !== null) {
@@ -878,7 +880,7 @@
           lastOppMove = om;
           if (window.chessHelper.showOpponent && om) drawOpponentArrow(om);
           else clearOpponentArrow();
-        } catch {} finally { processing = false; thinkingEl.classList.remove('active'); }
+        } catch {} finally { processing = false; }
       } else { clearOpponentArrow(); processing = false; }
       return;
     }
