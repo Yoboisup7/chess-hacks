@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Chess Assist
 // @namespace    https://github.com/ThatKidGlitchy/chess-hacks
-// @version      1.1.0
+// @version      1.1.1
 // @description  Stockfish-powered chess.com assistant with auto-play, best move arrows, opponent move prediction, win percent eval bar, real-time cheat detection against opponents, and custom skins.
 // @author       ThatKidGlitchy
 // @homepageURL  https://github.com/ThatKidGlitchy/chess-hacks
@@ -233,14 +233,16 @@
 
   function quickEval(posCmd, depth) {
     return new Promise((resolve) => {
-      let lastCp = 0;
-      const timeout = setTimeout(() => { sfWorker.removeEventListener('message', handler); resolve(lastCp); }, 10000);
+      let lastCp = null;
+      let timeout;
+      const finish = () => { clearTimeout(timeout); sfWorker.removeEventListener('message', handler); resolve(lastCp); };
+      timeout = setTimeout(() => { uciSend('stop'); timeout = setTimeout(finish, 1500); }, 10000);
       const handler = (e) => {
         const line = typeof e.data === 'string' ? e.data : '';
         const pvMatch = line.match(/\bmultipv\s+(\d+)/);
         const sm = !pvMatch || parseInt(pvMatch[1], 10) === 1 ? line.match(/score\s+(cp\s+[-\d]+|mate\s+[-\d]+)/) : null;
         if (sm) { const p = sm[1].split(/\s+/); lastCp = p[0] === 'mate' ? (parseInt(p[1]) > 0 ? 99999 : -99999) : parseInt(p[1]); }
-        if (line.startsWith('bestmove')) { clearTimeout(timeout); sfWorker.removeEventListener('message', handler); resolve(lastCp); }
+        if (line.startsWith('bestmove')) finish();
       };
       sfWorker.addEventListener('message', handler);
       uciSend(posCmd);
@@ -314,20 +316,27 @@
     uciSend('stop');
     await new Promise(r => setTimeout(r, 100));
     try {
-      moveLog.length = 0;
-      const DEPTH = ENGINE_DEPTH;
+      const analyzedMoves = [];
+      const DEPTH = Math.min(ENGINE_DEPTH, 12);
       const total = uciMoves.length;
       showLoadingOverlay(`Analyzing move 0/${total}...`);
       let prevCp = await quickEval('position startpos', DEPTH);
+      if (prevCp === null) throw new Error('Engine returned no score');
       for (let i = 0; i < total; i++) {
         showLoadingOverlay(`Analyzing move ${i + 1}/${total}...`);
         const movesStr = uciMoves.slice(0, i + 1).join(' ');
         const cp = await quickEval('position startpos moves ' + movesStr, DEPTH);
+        if (cp === null) throw new Error('Engine returned no score');
         const cpl = Math.min(500, Math.max(0, prevCp + cp));
-        moveLog.push({ color: i % 2 === 0 ? 'w' : 'b', cpl });
+        analyzedMoves.push({ color: i % 2 === 0 ? 'w' : 'b', cpl });
         prevCp = cp;
       }
+      moveLog.splice(0, moveLog.length, ...analyzedMoves);
       recalcDetection();
+    } catch {
+      showLoadingOverlay('Engine timed out. Try lowering the depth and reanalyzing.');
+      setTimeout(hideLoadingOverlay, 2500);
+      return;
     } finally {
       reanalyzing = false;
     }
@@ -345,15 +354,19 @@
     uciSend('stop');
     await new Promise(r => setTimeout(r, 100));
     try {
-      const DEPTH = ENGINE_DEPTH;
+      const DEPTH = Math.min(ENGINE_DEPTH, 12);
       let prevCp = await quickEval('position startpos', DEPTH);
+      if (prevCp === null) return;
+      const backfilledMoves = [];
       for (let i = 0; i < uciMoves.length; i++) {
         const movesStr = uciMoves.slice(0, i + 1).join(' ');
         const cp = await quickEval('position startpos moves ' + movesStr, DEPTH);
+        if (cp === null) return;
         const cpl = Math.min(500, Math.max(0, prevCp + cp));
-        moveLog.push({ color: i % 2 === 0 ? 'w' : 'b', cpl });
+        backfilledMoves.push({ color: i % 2 === 0 ? 'w' : 'b', cpl });
         prevCp = cp;
       }
+      moveLog.push(...backfilledMoves);
       recalcDetection();
     } finally {
       reanalyzing = false;
