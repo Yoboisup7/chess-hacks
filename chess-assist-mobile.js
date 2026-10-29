@@ -263,24 +263,24 @@
 
   function getDetectionGameIdentity() {
     const pageUrl = new URL(location.href);
+    const pathMatch = pageUrl.pathname.match(/\/game\/(?:live|daily)\/([^/]+)/i);
+    const urlGameId = pathMatch?.[1] || pageUrl.searchParams.get('gameId') || pageUrl.searchParams.get('game_id');
+    if (urlGameId) return { key: pageUrl.origin + '|' + urlGameId, stable: true };
+
     const b = getBoard();
     let gameId = null;
     try {
       const game = b?.game;
-      const candidate = game?.getGameId?.() ?? game?.getId?.() ?? game?.gameId ?? game?.id;
+      const candidate = game?.getGameId?.() ?? game?.gameId;
       if (typeof candidate === 'string' || typeof candidate === 'number') gameId = String(candidate);
     } catch {}
-    if (!gameId) {
-      const pathMatch = pageUrl.pathname.match(/\/game\/(?:live|daily)\/([^/]+)/i);
-      gameId = pathMatch?.[1] || pageUrl.searchParams.get('gameId') || pageUrl.searchParams.get('game_id');
-    }
-    if (gameId) return { key: `${pageUrl.origin}|${gameId}`, stable: true };
+    if (gameId) return { key: pageUrl.origin + '|' + gameId, stable: true };
 
     const players = [...document.querySelectorAll('.player-tagline-top .user-tagline-username, .player-tagline-bottom .user-tagline-username, .board-layout-top .user-tagline-username, .board-layout-bottom .user-tagline-username, [data-cy="user-tagline-username"]')]
       .map(el => el.textContent.trim().toLowerCase())
       .filter(Boolean)
       .sort();
-    return { key: `${pageUrl.origin}${pageUrl.pathname}|${players.join('|') || 'chess-game'}`, stable: false };
+    return { key: pageUrl.origin + pageUrl.pathname + '|' + (players.join('|') || 'chess-game'), stable: false };
   }
 
   function readDetectionCache() {
