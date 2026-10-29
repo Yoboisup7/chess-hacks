@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Chess Assist
 // @namespace    https://github.com/ThatKidGlitchy/chess-hacks
-// @version      1.1.9
+// @version      1.1.10
 // @description  Stockfish-powered chess.com assistant with auto-play, best move arrows, opponent move prediction, win percent eval bar, real-time cheat detection against opponents, and custom skins.
 // @author       ThatKidGlitchy
 // @homepageURL  https://github.com/ThatKidGlitchy/chess-hacks
@@ -399,12 +399,13 @@
       const fields = b.game.getFEN().split(' ');
       const turn = fields[1];
       const moveNumber = parseInt(fields[5], 10);
-      if (turn === 'w' && moveNumber === 1 && bottom && top && !bottomActive && !topActive) return false;
-      return turn === getMyColor();
+      if (turn === 'w' && moveNumber === 1 && getGameMoves().length === 0 && !bottomActive && !topActive) return null;
+      if (turn === 'w' || turn === 'b') return turn === getMyColor();
+      return null;
     }
-    if (bottom && !top) return bottomActive;
-    if (top && !bottom) return false;
-    return false;
+    if (bottom && !top) return bottomActive ? true : null;
+    if (top && !bottom) return topActive ? false : null;
+    return null;
   }
 
   function getFEN() {
@@ -846,6 +847,7 @@
     if (!inActiveGame()) return;
     if (window.chessHelper.detection && !syncDetectionGame()) return;
     const myTurn = isMyTurn();
+    if (myTurn === null) return;
     if (!myTurn) {
       waitingForOpponent = false;
       lastFen = '';
