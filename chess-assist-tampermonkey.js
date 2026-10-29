@@ -273,32 +273,26 @@
     const game = b.game;
     let uci = [];
     try {
-      const h = game.getHistory ? game.getHistory() : (game.getMoves ? game.getMoves() : []);
-      for (const m of h) {
-        if (typeof m === 'string' && m.length >= 4) uci.push(m.slice(0, 5).replace(/\s/g, ''));
-        else if (m?.from && m?.to) uci.push(m.from + m.to + (m.promotion || ''));
-        else if (m?.move && typeof m.move === 'string' && m.move.length >= 4) uci.push(m.move);
-        else if (m?.tcn) { const d = decodeTcnMove(m.tcn); if (d) uci.push(d); }
+      const lines = game.getRawLines?.();
+      if (lines?.[0]?.length) {
+        for (const m of lines[0]) {
+          if (m?.from && m?.to) uci.push(m.from + m.to + (m.promotion || ''));
+        }
       }
     } catch {}
     if (!uci.length) {
       try {
-        const h = game.getHistory?.({ verbose: true }) || [];
-        for (const m of h) {
-          if (m?.from && m?.to) uci.push(m.from + m.to + (m.promotion || ''));
-          else if (m?.tcn) { const d = decodeTcnMove(m.tcn); if (d) uci.push(d); }
-        }
+        const tcn = game.getTCN?.();
+        if (typeof tcn === 'string' && tcn.length >= 2) uci = decodeTcn(tcn);
       } catch {}
     }
     if (!uci.length) {
       try {
-        const raw = game.rawGame || game._game || game;
-        if (raw?.moveList) {
-          const ml = raw.moveList;
-          if (typeof ml === 'string' && ml.length >= 2) uci = decodeTcn(ml);
-          else if (Array.isArray(ml)) {
-            for (const m of ml) { if (typeof m === 'string' && m.length >= 4) uci.push(m); }
-          }
+        const h = game.getHistory ? game.getHistory() : (game.getMoves ? game.getMoves() : []);
+        for (const m of h) {
+          if (typeof m === 'string' && m.length >= 4) uci.push(m.slice(0, 5).replace(/\s/g, ''));
+          else if (m?.from && m?.to) uci.push(m.from + m.to + (m.promotion || ''));
+          else if (m?.tcn) { const d = decodeTcnMove(m.tcn); if (d) uci.push(d); }
         }
       } catch {}
     }
