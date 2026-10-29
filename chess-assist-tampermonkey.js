@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Chess Assist
 // @namespace    https://github.com/ThatKidGlitchy/chess-hacks
-// @version      1.1.5
+// @version      1.1.6
 // @description  Stockfish-powered chess.com assistant with auto-play, best move arrows, opponent move prediction, win percent eval bar, real-time cheat detection against opponents, and custom skins.
 // @author       ThatKidGlitchy
 // @homepageURL  https://github.com/ThatKidGlitchy/chess-hacks
@@ -1256,6 +1256,52 @@
 
   let ox = window.innerWidth - 80, oy = 80, dragging = false, dragMoved = false, sx = 0, sy = 0;
   function setPos() { bubble.style.transform = `translate3d(${ox}px,${oy}px,0)`; }
+  function findSafeBubblePosition(size, preferredX, preferredY) {
+    const margin = 12;
+    const maxX = Math.max(margin, window.innerWidth - size - margin);
+    const maxY = Math.max(margin, window.innerHeight - size - margin);
+    const clampX = x => Math.max(margin, Math.min(x, maxX));
+    const clampY = y => Math.max(margin, Math.min(y, maxY));
+    const candidates = [
+      [preferredX, preferredY], [maxX, maxY], [margin, maxY],
+      [margin, margin], [maxX, margin],
+      [margin, (window.innerHeight - size) / 2],
+      [maxX, (window.innerHeight - size) / 2],
+      [(window.innerWidth - size) / 2, margin],
+      [(window.innerWidth - size) / 2, maxY]
+    ];
+    const board = getBoard();
+    const oldPointerEvents = bubble.style.pointerEvents;
+    const oldTransition = bubble.style.transition;
+    bubble.style.pointerEvents = 'none';
+    bubble.style.transition = 'none';
+
+    for (const [candidateX, candidateY] of candidates) {
+      const x = clampX(candidateX), y = clampY(candidateY);
+      bubble.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0)';
+      const samplePoints = [
+        [x + 4, y + 4], [x + size / 2, y + 4], [x + size - 4, y + 4],
+        [x + 4, y + size / 2], [x + size / 2, y + size / 2], [x + size - 4, y + size / 2],
+        [x + 4, y + size - 4], [x + size / 2, y + size - 4], [x + size - 4, y + size - 4]
+      ];
+      const overlapsSiteControl = samplePoints.some(([px, py]) => {
+        const element = document.elementFromPoint(px, py);
+        return !element || board?.contains(element) ||
+          Boolean(element.closest?.('button,a[href],input,select,textarea,[role="button"],[data-cy*="button"],[data-testid*="button"]'));
+      });
+      if (!overlapsSiteControl) {
+        bubble.style.pointerEvents = oldPointerEvents;
+        bubble.style.transition = oldTransition;
+        return { x, y };
+      }
+    }
+
+    bubble.style.pointerEvents = oldPointerEvents;
+    bubble.style.transition = oldTransition;
+    return { x: clampX(preferredX), y: clampY(preferredY) };
+  }
+  const safeBubblePosition = findSafeBubblePosition(52, ox, oy);
+  ox = safeBubblePosition.x; oy = safeBubblePosition.y;
   setPos();
   function bubbleDown(e) {
     e.preventDefault();
