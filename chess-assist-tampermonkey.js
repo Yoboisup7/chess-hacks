@@ -248,32 +248,57 @@
     });
   }
 
+  const TCN_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?{~}(^/\\[]|_@#$&';
+  function decodeTcn(tcn) {
+    const files = 'abcdefgh', promos = ['q','r','b','n'], moves = [];
+    for (let i = 0; i + 1 < tcn.length; i += 2) {
+      const fi = TCN_CHARS.indexOf(tcn[i]), ti = TCN_CHARS.indexOf(tcn[i + 1]);
+      if (fi < 0 || fi > 63 || ti < 0) continue;
+      const from = files[fi % 8] + (Math.floor(fi / 8) + 1);
+      if (ti < 64) { moves.push(from + files[ti % 8] + (Math.floor(ti / 8) + 1)); }
+      else {
+        const extra = ti - 64, promo = promos[Math.floor(extra / 3)] || 'q';
+        const dFile = (extra % 3) - 1, toFile = (fi % 8) + dFile;
+        const toRank = Math.floor(fi / 8) < 4 ? 0 : 7;
+        if (toFile >= 0 && toFile <= 7) moves.push(from + files[toFile] + (toRank + 1) + promo);
+      }
+    }
+    return moves;
+  }
+  function decodeTcnMove(t) { const r = decodeTcn(t); return r.length ? r[0] : null; }
+
   function getGameMoves() {
     const b = getBoard();
     if (!b?.game) return [];
+    const game = b.game;
     let uci = [];
     try {
-      const h = b.game.getHistory ? b.game.getHistory() : (b.game.getMoves ? b.game.getMoves() : []);
+      const h = game.getHistory ? game.getHistory() : (game.getMoves ? game.getMoves() : []);
       for (const m of h) {
         if (typeof m === 'string' && m.length >= 4) uci.push(m.slice(0, 5).replace(/\s/g, ''));
         else if (m?.from && m?.to) uci.push(m.from + m.to + (m.promotion || ''));
         else if (m?.move && typeof m.move === 'string' && m.move.length >= 4) uci.push(m.move);
-        else if (m?.tcn) continue;
+        else if (m?.tcn) { const d = decodeTcnMove(m.tcn); if (d) uci.push(d); }
       }
     } catch {}
     if (!uci.length) {
       try {
-        const h = b.game.getHistory?.({ verbose: true }) || [];
-        for (const m of h) { if (m?.from && m?.to) uci.push(m.from + m.to + (m.promotion || '')); }
+        const h = game.getHistory?.({ verbose: true }) || [];
+        for (const m of h) {
+          if (m?.from && m?.to) uci.push(m.from + m.to + (m.promotion || ''));
+          else if (m?.tcn) { const d = decodeTcnMove(m.tcn); if (d) uci.push(d); }
+        }
       } catch {}
     }
     if (!uci.length) {
       try {
-        const raw = b.game.rawGame || b.game._game || b.game;
+        const raw = game.rawGame || game._game || game;
         if (raw?.moveList) {
           const ml = raw.moveList;
-          const moves = typeof ml === 'string' ? ml.match(/.{1,4}/g) || [] : (Array.isArray(ml) ? ml : []);
-          for (const m of moves) { if (typeof m === 'string' && m.length >= 4) uci.push(m); }
+          if (typeof ml === 'string' && ml.length >= 2) uci = decodeTcn(ml);
+          else if (Array.isArray(ml)) {
+            for (const m of ml) { if (typeof m === 'string' && m.length >= 4) uci.push(m); }
+          }
         }
       } catch {}
     }
