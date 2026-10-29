@@ -871,11 +871,12 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
     lastOppFen = ''; lastOppMove = null;
     const fen = getFEN(); if (!fen) return;
     if (fen === lastFen) return;
-    if (window.chessHelper.autoPlay && (fen === lastMovedFen || waitingForOpponent)) return;
+    if (waitingForOpponent && fen !== lastMovedFen) waitingForOpponent = false;
+    if (window.chessHelper.autoPlay && fen === lastMovedFen) return;
 
     processing = true;
-    thinkingEl.classList.add('active');
     try {
+      thinkingEl.classList.add('active');
       const result = await fetchRemote(fen);
       thinkingEl.classList.remove('active');
       if (!result) return;
@@ -922,7 +923,10 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
           lastFen = '';
         }
       }
-    } catch {} finally { processing = false; thinkingEl.classList.remove('active'); }
+    } catch {
+      lastFen = '';
+      if (window.chessHelper.autoPlay) { lastMovedFen = ''; waitingForOpponent = false; }
+    } finally { processing = false; thinkingEl.classList.remove('active'); }
   }
 
   const obs = new MutationObserver(() => { if (!drawing && (window.chessHelper.autoPlay || window.chessHelper.showArrow || window.chessHelper.hiddenArrow || window.chessHelper.showOpponent || window.chessHelper.showEval || window.chessHelper.detection)) tick(); });
