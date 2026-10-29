@@ -214,7 +214,8 @@
       const timeout = setTimeout(() => { sfWorker.removeEventListener('message', handler); resolve(lastCp); }, 10000);
       const handler = (e) => {
         const line = typeof e.data === 'string' ? e.data : '';
-        const sm = line.match(/score\s+(cp\s+[-\d]+|mate\s+[-\d]+)/);
+        const pvMatch = line.match(/\bmultipv\s+(\d+)/);
+        const sm = !pvMatch || parseInt(pvMatch[1], 10) === 1 ? line.match(/score\s+(cp\s+[-\d]+|mate\s+[-\d]+)/) : null;
         if (sm) { const p = sm[1].split(/\s+/); lastCp = p[0] === 'mate' ? (parseInt(p[1]) > 0 ? 99999 : -99999) : parseInt(p[1]); }
         if (line.startsWith('bestmove')) { clearTimeout(timeout); sfWorker.removeEventListener('message', handler); resolve(lastCp); }
       };
@@ -291,7 +292,7 @@
     await new Promise(r => setTimeout(r, 100));
     try {
       moveLog.length = 0;
-      const DEPTH = 12;
+      const DEPTH = ENGINE_DEPTH;
       const total = uciMoves.length;
       showLoadingOverlay(`Analyzing move 0/${total}...`);
       let prevCp = await quickEval('position startpos', DEPTH);
@@ -321,7 +322,7 @@
     uciSend('stop');
     await new Promise(r => setTimeout(r, 100));
     try {
-      const DEPTH = 10;
+      const DEPTH = ENGINE_DEPTH;
       let prevCp = await quickEval('position startpos', DEPTH);
       for (let i = 0; i < uciMoves.length; i++) {
         const movesStr = uciMoves.slice(0, i + 1).join(' ');
