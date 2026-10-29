@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Chess Assist (Mobile)
 // @namespace    https://github.com/ThatKidGlitchy/chess-hacks
-// @version      1.1.3
+// @version      1.1.4
 // @description  Stockfish-powered chess.com assistant with auto-play, best move arrows, opponent move prediction, win percent eval bar, real-time cheat detection against opponents, and custom skins.
 // @author       ThatKidGlitchy
 // @homepageURL  https://github.com/ThatKidGlitchy/chess-hacks
@@ -25,8 +25,8 @@
     #chess-helper-bubble { position:fixed; width:48px; height:48px; background:var(--ch-bg); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); border:1px solid var(--ch-border); border-radius:50%; box-shadow:0 8px 30px -8px #0008; display:flex; align-items:center; justify-content:center; cursor:grab; color:#fff; pointer-events:auto; z-index:100000; user-select:none; touch-action:none; transition:transform .15s; }
     #chess-helper-bubble:active { transform:scale(1.12); }
     #chess-helper-bubble img { width:100%; height:100%; pointer-events:none; -webkit-user-drag:none; }
-    #chess-helper-wrap { position:fixed; display:flex; align-items:stretch; gap:8px; opacity:0; transform:scale(0.92); transition:opacity .2s, transform .25s; pointer-events:none; }
-    #chess-helper-wrap.visible { opacity:1; transform:scale(1); pointer-events:auto; }
+    #chess-helper-wrap { position:fixed; visibility:hidden; display:flex; align-items:stretch; gap:8px; opacity:0; transform:scale(0.92); transition:opacity .2s, transform .25s; pointer-events:none; }
+    #chess-helper-wrap.visible { visibility:visible; opacity:1; transform:scale(1); pointer-events:auto; }
     #chess-helper-wrap:not(.visible), #chess-helper-wrap:not(.visible) * { pointer-events:none !important; }
     #chess-helper-panel { width:min(270px,85vw); max-height:80vh; overflow-y:auto; background:rgba(18,18,20,0.9); -webkit-backdrop-filter:blur(24px); backdrop-filter:blur(24px); border:1px solid var(--ch-border); border-radius:var(--ch-radius); padding:16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 16px 50px #0009; pointer-events:auto; -webkit-overflow-scrolling:touch; }
     #ch-eval-bar { width:28px; border-radius:12px; overflow:hidden; background:#000; box-shadow:0 10px 40px -10px #0008; position:relative; pointer-events:auto; min-height:180px; }
