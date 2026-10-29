@@ -847,7 +847,6 @@
       clearShading();
       if (fen) {
         try {
-          thinkingEl.classList.add('active');
           const candidates = await queryLocal(fen, ENGINE_DEPTH);
           const om = candidates.length ? candidates[0].move : null;
           if (candidates.length && candidates[0].cp !== null) {
@@ -867,7 +866,7 @@
           lastOppMove = om;
           if (window.chessHelper.showOpponent && om) drawOpponentArrow(om);
           else clearOpponentArrow();
-        } catch {} finally { processing = false; thinkingEl.classList.remove('active'); }
+        } catch {} finally { processing = false; }
       } else { clearOpponentArrow(); processing = false; }
       return;
     }
