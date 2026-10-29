@@ -211,6 +211,7 @@
     detection.topThree = 0; detection.blunders = 0; detection.lastOppEvalCp = null; detection.lastOppEvalFen = null;
     detection.lastMyEvalCp = null; detection.lastMyEvalFen = null;
     moveLog.length = 0;
+    backfilled = false;
     updateDetectionUI();
   }
 
@@ -314,6 +315,32 @@
       reanalyzing = false;
     }
     hideLoadingOverlay();
+  }
+
+  let backfilled = false;
+  async function backfillDetection() {
+    if (backfilled || reanalyzing || !sfReady || !sfWorker) return;
+    const uciMoves = getGameMoves();
+    if (uciMoves.length < 2) return;
+    backfilled = true;
+    reanalyzing = true;
+    while (processing) await new Promise(r => setTimeout(r, 50));
+    uciSend('stop');
+    await new Promise(r => setTimeout(r, 100));
+    try {
+      const DEPTH = 10;
+      let prevCp = await quickEval('position startpos', DEPTH);
+      for (let i = 0; i < uciMoves.length; i++) {
+        const movesStr = uciMoves.slice(0, i + 1).join(' ');
+        const cp = await quickEval('position startpos moves ' + movesStr, DEPTH);
+        const cpl = Math.min(500, Math.max(0, prevCp + cp));
+        moveLog.push({ color: i % 2 === 0 ? 'w' : 'b', cpl });
+        prevCp = cp;
+      }
+      recalcDetection();
+    } finally {
+      reanalyzing = false;
+    }
   }
 
   const pieceToFen = { wp:'P',wn:'N',wb:'B',wr:'R',wq:'Q',wk:'K', bp:'p',bn:'n',bb:'b',br:'r',bq:'q',bk:'k' };
@@ -792,6 +819,7 @@
   async function tick() {
     if ((!window.chessHelper.autoPlay && !window.chessHelper.showArrow && !window.chessHelper.hiddenArrow && !window.chessHelper.showOpponent && !window.chessHelper.showEval && !window.chessHelper.detection) || processing || reanalyzing) return;
     if (!inActiveGame()) return;
+    if (window.chessHelper.detection && !moveLog.length && !backfilled && sfReady) { backfillDetection(); return; }
     const myTurn = isMyTurn();
     if (!myTurn) {
       waitingForOpponent = false;
