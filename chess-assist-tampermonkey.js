@@ -109,7 +109,8 @@
 
   const detection = { oppMoves: 0, totalCpl: 0, bestMoves: 0, topThree: 0, blunders: 0, lastOppEvalCp: null, lastOppEvalFen: null, lastMyEvalCp: null, lastMyEvalFen: null };
   const moveLog = [];
-  let detTarget = 'opponent';
+  let detTarget = 'b';
+  let reanalyzing = false;
 
   const ELO_TABLE = [
     { elo: 400, acpl: 215, bmr: 0.17, acc: 45 }, { elo: 600, acpl: 188, bmr: 0.22, acc: 50 },
@@ -155,7 +156,7 @@
   function getDetectionElo() {
     const elos = getPlayerElos();
     const flipped = isFlipped();
-    if (detTarget === 'opponent') return flipped ? elos.bottom : elos.top;
+    if (detTarget !== getMyColor()) return flipped ? elos.bottom : elos.top;
     return flipped ? elos.top : elos.bottom;
   }
 
@@ -194,7 +195,7 @@
     accEl.textContent = Math.round(accuracy * 10) / 10 + '%';
     const score = computeSuspicion(acpl, bmr, accuracy, detection.blunders, detection.oppMoves, elo);
     let level, color;
-    if (detTarget === 'self') {
+    if (detTarget === getMyColor()) {
       if (score >= 75) { level = 'Engine-level play'; color = '#96bc4b'; }
       else if (score >= 50) { level = 'Very strong play'; color = '#96bc4b'; }
       else if (score >= 28) { level = 'Solid play'; color = '#e0a040'; }
@@ -215,7 +216,7 @@
 
   function recalcDetection() {
     const myColor = getMyColor();
-    const targetColor = detTarget === 'opponent' ? (myColor === 'w' ? 'b' : 'w') : myColor;
+    const targetColor = detTarget;
     const entries = moveLog.filter(e => e.color === targetColor);
     detection.oppMoves = entries.length;
     detection.totalCpl = entries.reduce((s, e) => s + e.cpl, 0);
@@ -300,6 +301,7 @@
   }
 
   async function reanalyzeGame() {
+    if (reanalyzing) return;
     if (!sfReady) await initEngine();
     if (!sfWorker || !sfReady) return;
     let uciMoves = getGameMoves();
@@ -308,20 +310,25 @@
       setTimeout(hideLoadingOverlay, 1500);
       return;
     }
-    moveLog.length = 0;
-    const DEPTH = 12;
-    const total = uciMoves.length;
-    showLoadingOverlay(`Analyzing move 0/${total}...`);
-    let prevCp = await quickEval('position startpos', DEPTH);
-    for (let i = 0; i < total; i++) {
-      showLoadingOverlay(`Analyzing move ${i + 1}/${total}...`);
-      const movesStr = uciMoves.slice(0, i + 1).join(' ');
-      const cp = await quickEval('position startpos moves ' + movesStr, DEPTH);
-      const cpl = Math.min(500, Math.max(0, prevCp + cp));
-      moveLog.push({ color: i % 2 === 0 ? 'w' : 'b', cpl });
-      prevCp = cp;
+    reanalyzing = true;
+    try {
+      moveLog.length = 0;
+      const DEPTH = 12;
+      const total = uciMoves.length;
+      showLoadingOverlay(`Analyzing move 0/${total}...`);
+      let prevCp = await quickEval('position startpos', DEPTH);
+      for (let i = 0; i < total; i++) {
+        showLoadingOverlay(`Analyzing move ${i + 1}/${total}...`);
+        const movesStr = uciMoves.slice(0, i + 1).join(' ');
+        const cp = await quickEval('position startpos moves ' + movesStr, DEPTH);
+        const cpl = Math.min(500, Math.max(0, prevCp + cp));
+        moveLog.push({ color: i % 2 === 0 ? 'w' : 'b', cpl });
+        prevCp = cp;
+      }
+      recalcDetection();
+    } finally {
+      reanalyzing = false;
     }
-    recalcDetection();
     hideLoadingOverlay();
   }
 
@@ -803,7 +810,7 @@
 
   let processing = false, lastFen = '', lastMovedFen = '', drawing = false, lastOppFen = '', lastOppMove = null, waitingForOpponent = false;
   async function tick() {
-    if ((!window.chessHelper.autoPlay && !window.chessHelper.showArrow && !window.chessHelper.hiddenArrow && !window.chessHelper.showOpponent && !window.chessHelper.showEval && !window.chessHelper.detection) || processing) return;
+    if ((!window.chessHelper.autoPlay && !window.chessHelper.showArrow && !window.chessHelper.hiddenArrow && !window.chessHelper.showOpponent && !window.chessHelper.showEval && !window.chessHelper.detection) || processing || reanalyzing) return;
     if (!inActiveGame()) return;
     const myTurn = isMyTurn();
     if (!myTurn) {
@@ -823,7 +830,7 @@
               const rawMyCpl = detection.lastMyEvalCp + candidates[0].cp;
               const myCpl = Number.isFinite(rawMyCpl) ? Math.min(500, Math.max(0, rawMyCpl)) : 500;
               moveLog.push({ color: getMyColor(), cpl: myCpl });
-              if (detTarget === 'self') {
+              if (detTarget === getMyColor()) {
                 detection.oppMoves++; detection.totalCpl += myCpl;
                 if (myCpl <= 5) detection.bestMoves++;
                 else if (myCpl <= 20) detection.topThree++;
@@ -862,7 +869,7 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
         const cpl = Number.isFinite(rawCpl) ? Math.min(500, Math.max(0, rawCpl)) : 500;
         const oppColor = getMyColor() === 'w' ? 'b' : 'w';
         moveLog.push({ color: oppColor, cpl });
-        if (detTarget === 'opponent') {
+        if (detTarget !== getMyColor()) {
           detection.oppMoves++;
           detection.totalCpl += cpl;
           if (cpl <= 5) detection.bestMoves++;
@@ -963,8 +970,8 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
     </div>
     <div class="ch-tab-content" id="ch-tab-detection">
       <div style="display:flex;gap:4px;justify-content:center;padding:4px 0 6px;">
-        <button id="ch-det-opp" class="ch-det-target active" style="flex:1;padding:4px 0;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:var(--ch-accent);color:#fff;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;">Opponent</button>
-        <button id="ch-det-self" class="ch-det-target" style="flex:1;padding:4px 0;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;">You</button>
+        <button id="ch-det-black" class="ch-det-target active" style="flex:1;padding:4px 0;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:var(--ch-accent);color:#fff;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;">Black</button>
+        <button id="ch-det-white" class="ch-det-target" style="flex:1;padding:4px 0;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;">White</button>
       </div>
       <div>
         <div class="ch-detect-stat"><span class="ch-detect-label">Moves analyzed <span class="ch-info" data-tip="det-moves">i</span></span><span class="ch-detect-value" id="ch-det-moves">0</span></div>
@@ -1049,23 +1056,23 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
   });
   panel.querySelector('#ch-det-reset').onclick = resetDetection;
   panel.querySelector('#ch-det-reanalyze').onclick = reanalyzeGame;
-  panel.querySelector('#ch-det-opp').onclick = () => {
-    if (detTarget === 'opponent') return;
-    detTarget = 'opponent';
-    panel.querySelector('#ch-det-opp').style.background = 'var(--ch-accent)';
-    panel.querySelector('#ch-det-opp').style.color = '#fff';
-    panel.querySelector('#ch-det-self').style.background = 'rgba(255,255,255,0.06)';
-    panel.querySelector('#ch-det-self').style.color = 'rgba(255,255,255,0.5)';
+  panel.querySelector('#ch-det-black').onclick = () => {
+    if (detTarget === 'b') return;
+    detTarget = 'b';
+    panel.querySelector('#ch-det-black').style.background = 'var(--ch-accent)';
+    panel.querySelector('#ch-det-black').style.color = '#fff';
+    panel.querySelector('#ch-det-white').style.background = 'rgba(255,255,255,0.06)';
+    panel.querySelector('#ch-det-white').style.color = 'rgba(255,255,255,0.5)';
     recalcDetection();
     saveSettings();
   };
-  panel.querySelector('#ch-det-self').onclick = () => {
-    if (detTarget === 'self') return;
-    detTarget = 'self';
-    panel.querySelector('#ch-det-self').style.background = 'var(--ch-accent)';
-    panel.querySelector('#ch-det-self').style.color = '#fff';
-    panel.querySelector('#ch-det-opp').style.background = 'rgba(255,255,255,0.06)';
-    panel.querySelector('#ch-det-opp').style.color = 'rgba(255,255,255,0.5)';
+  panel.querySelector('#ch-det-white').onclick = () => {
+    if (detTarget === 'w') return;
+    detTarget = 'w';
+    panel.querySelector('#ch-det-white').style.background = 'var(--ch-accent)';
+    panel.querySelector('#ch-det-white').style.color = '#fff';
+    panel.querySelector('#ch-det-black').style.background = 'rgba(255,255,255,0.06)';
+    panel.querySelector('#ch-det-black').style.color = 'rgba(255,255,255,0.5)';
     recalcDetection();
     saveSettings();
   };
@@ -1588,12 +1595,12 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
     }
     if (typeof saved.delayMin === 'number') { DELAY_MIN = saved.delayMin; delayMinSlider.value = DELAY_MIN; delayMinVal.textContent = DELAY_MIN + 's'; }
     if (typeof saved.delayMax === 'number') { DELAY_MAX = saved.delayMax; delayMaxSlider.value = DELAY_MAX; delayMaxVal.textContent = DELAY_MAX + 's'; }
-    if (saved.detTarget === 'self') {
-      detTarget = 'self';
-      panel.querySelector('#ch-det-self').style.background = 'var(--ch-accent)';
-      panel.querySelector('#ch-det-self').style.color = '#fff';
-      panel.querySelector('#ch-det-opp').style.background = 'rgba(255,255,255,0.06)';
-      panel.querySelector('#ch-det-opp').style.color = 'rgba(255,255,255,0.5)';
+    if (saved.detTarget === 'w') {
+      detTarget = 'w';
+      panel.querySelector('#ch-det-white').style.background = 'var(--ch-accent)';
+      panel.querySelector('#ch-det-white').style.color = '#fff';
+      panel.querySelector('#ch-det-black').style.background = 'rgba(255,255,255,0.06)';
+      panel.querySelector('#ch-det-black').style.color = 'rgba(255,255,255,0.5)';
     }
     if (saved.binds) {
       for (const [name, val] of Object.entries(saved.binds)) {
