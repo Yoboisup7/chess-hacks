@@ -311,6 +311,9 @@
       return;
     }
     reanalyzing = true;
+    while (processing) await new Promise(r => setTimeout(r, 50));
+    uciSend('stop');
+    await new Promise(r => setTimeout(r, 100));
     try {
       moveLog.length = 0;
       const DEPTH = 12;
