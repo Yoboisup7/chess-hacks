@@ -195,17 +195,10 @@
     accEl.textContent = Math.round(accuracy * 10) / 10 + '%';
     const score = computeSuspicion(acpl, bmr, accuracy, detection.blunders, detection.oppMoves, elo);
     let level, color;
-    if (detTarget === getMyColor()) {
-      if (score >= 75) { level = 'Engine-level play'; color = '#96bc4b'; }
-      else if (score >= 50) { level = 'Very strong play'; color = '#96bc4b'; }
-      else if (score >= 28) { level = 'Solid play'; color = '#e0a040'; }
-      else { level = 'Room to improve'; color = 'rgba(255,255,255,0.5)'; }
-    } else {
-      if (score >= 75) { level = 'Engine detected'; color = '#e04040'; }
-      else if (score >= 50) { level = 'Highly suspicious'; color = '#e07040'; }
-      else if (score >= 28) { level = 'Somewhat suspicious'; color = '#e0a040'; }
-      else { level = 'Likely clean'; color = 'var(--ch-accent)'; }
-    }
+    if (score >= 75) { level = 'Engine detected'; color = '#e04040'; }
+    else if (score >= 50) { level = 'Highly suspicious'; color = '#e07040'; }
+    else if (score >= 28) { level = 'Somewhat suspicious'; color = '#e0a040'; }
+    else { level = 'Likely clean'; color = 'var(--ch-accent)'; }
     if (detection.oppMoves < 5) level += ' (low sample)';
     scoreEl.textContent = score + '%';
     fillEl.style.width = score + '%';
@@ -842,7 +835,11 @@
   async function tick() {
     if ((!window.chessHelper.autoPlay && !window.chessHelper.showArrow && !window.chessHelper.hiddenArrow && !window.chessHelper.showOpponent && !window.chessHelper.showEval && !window.chessHelper.detection) || processing || reanalyzing) return;
     if (!inActiveGame()) return;
-    if (window.chessHelper.detection && !moveLog.length && !backfilled && sfReady) { backfillDetection(); return; }
+    if (window.chessHelper.detection && !moveLog.length && !backfilled && sfReady) {
+      // Backfill historical moves once they exist; an empty opening position
+      // must not prevent the normal first-move analysis/autoplay path.
+      if (getGameMoves().length >= 2) backfillDetection();
+    }
     const myTurn = isMyTurn();
     if (!myTurn) {
       waitingForOpponent = false;
