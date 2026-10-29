@@ -6,7 +6,7 @@
   style.textContent = `
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
     :root { --ch-accent:#81b64c; --ch-accent-hover:#a3d160; --ch-bg:rgba(20,20,23,0.82); --ch-border:rgba(255,255,255,0.1); --ch-radius:18px; --ch-font:'Outfit',system-ui,sans-serif; }
-    #chess-helper-root { position:fixed; inset:0; pointer-events:none; z-index:99999; font-family:var(--ch-font); -webkit-tap-highlight-color:transparent; }
+    #chess-helper-root { position:fixed; left:0; top:0; width:0; height:0; overflow:visible; pointer-events:none !important; z-index:99999; font-family:var(--ch-font); -webkit-tap-highlight-color:transparent; }
     #chess-helper-bubble { position:fixed; width:48px; height:48px; background:var(--ch-bg); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); border:1px solid var(--ch-border); border-radius:50%; box-shadow:0 8px 30px -8px #0008; display:flex; align-items:center; justify-content:center; cursor:grab; color:#fff; pointer-events:auto; z-index:100000; user-select:none; touch-action:none; transition:transform .15s; }
     #chess-helper-bubble:active { transform:scale(1.12); }
     #chess-helper-bubble img { width:100%; height:100%; pointer-events:none; -webkit-user-drag:none; }
