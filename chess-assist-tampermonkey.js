@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Chess Assist
 // @namespace    https://github.com/ThatKidGlitchy/chess-hacks
-// @version      1.1.1
+// @version      1.1.2
 // @description  Stockfish-powered chess.com assistant with auto-play, best move arrows, opponent move prediction, win percent eval bar, real-time cheat detection against opponents, and custom skins.
 // @author       ThatKidGlitchy
 // @homepageURL  https://github.com/ThatKidGlitchy/chess-hacks
@@ -114,7 +114,8 @@
   const detection = { oppMoves: 0, totalCpl: 0, bestMoves: 0, topThree: 0, blunders: 0, lastOppEvalCp: null, lastOppEvalFen: null, lastMyEvalCp: null, lastMyEvalFen: null };
   const moveLog = [];
   let detTarget = 'b';
-  let reanalyzing = false;
+  const DETECTION_CACHE_KEY = 'ch-detection-games-v1';
+  let activeDetectionKey = '';
 
   const ELO_TABLE = [
     { elo: 400, acpl: 215, bmr: 0.17, acc: 45 }, { elo: 600, acpl: 188, bmr: 0.22, acc: 50 },
@@ -221,33 +222,14 @@
     detection.topThree = entries.filter(e => e.cpl > 5 && e.cpl <= 20).length;
     detection.blunders = entries.filter(e => e.cpl > 200).length;
     updateDetectionUI();
+    saveDetectionState();
   }
   function resetDetection() {
     detection.oppMoves = 0; detection.totalCpl = 0; detection.bestMoves = 0;
     detection.topThree = 0; detection.blunders = 0; detection.lastOppEvalCp = null; detection.lastOppEvalFen = null;
     detection.lastMyEvalCp = null; detection.lastMyEvalFen = null;
     moveLog.length = 0;
-    backfilled = false;
-    updateDetectionUI();
-  }
-
-  function quickEval(posCmd, depth) {
-    return new Promise((resolve) => {
-      let lastCp = null;
-      let timeout;
-      const finish = () => { clearTimeout(timeout); sfWorker.removeEventListener('message', handler); resolve(lastCp); };
-      timeout = setTimeout(() => { uciSend('stop'); timeout = setTimeout(finish, 1500); }, 10000);
-      const handler = (e) => {
-        const line = typeof e.data === 'string' ? e.data : '';
-        const pvMatch = line.match(/\bmultipv\s+(\d+)/);
-        const sm = !pvMatch || parseInt(pvMatch[1], 10) === 1 ? line.match(/score\s+(cp\s+[-\d]+|mate\s+[-\d]+)/) : null;
-        if (sm) { const p = sm[1].split(/\s+/); lastCp = p[0] === 'mate' ? (parseInt(p[1]) > 0 ? 99999 : -99999) : parseInt(p[1]); }
-        if (line.startsWith('bestmove')) finish();
-      };
-      sfWorker.addEventListener('message', handler);
-      uciSend(posCmd);
-      uciSend('go depth ' + depth);
-    });
+    recalcDetection();
   }
 
   const TCN_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?{~}(^/\\[]|_@#$&';
@@ -301,76 +283,76 @@
     return uci;
   }
 
-  async function reanalyzeGame() {
-    if (reanalyzing) return;
-    if (!sfReady) await initEngine();
-    if (!sfWorker || !sfReady) return;
-    let uciMoves = getGameMoves();
-    if (!uciMoves.length) {
-      showLoadingOverlay('No moves found in this game');
-      setTimeout(hideLoadingOverlay, 1500);
-      return;
-    }
-    reanalyzing = true;
-    while (processing) await new Promise(r => setTimeout(r, 50));
-    uciSend('stop');
-    await new Promise(r => setTimeout(r, 100));
+  function getDetectionGameIdentity() {
+    const pageUrl = new URL(location.href);
+    const b = getBoard();
+    let gameId = null;
     try {
-      const analyzedMoves = [];
-      const DEPTH = Math.min(ENGINE_DEPTH, 12);
-      const total = uciMoves.length;
-      showLoadingOverlay(`Analyzing move 0/${total}...`);
-      let prevCp = await quickEval('position startpos', DEPTH);
-      if (prevCp === null) throw new Error('Engine returned no score');
-      for (let i = 0; i < total; i++) {
-        showLoadingOverlay(`Analyzing move ${i + 1}/${total}...`);
-        const movesStr = uciMoves.slice(0, i + 1).join(' ');
-        const cp = await quickEval('position startpos moves ' + movesStr, DEPTH);
-        if (cp === null) throw new Error('Engine returned no score');
-        const cpl = Math.min(500, Math.max(0, prevCp + cp));
-        analyzedMoves.push({ color: i % 2 === 0 ? 'w' : 'b', cpl });
-        prevCp = cp;
-      }
-      moveLog.splice(0, moveLog.length, ...analyzedMoves);
-      recalcDetection();
-    } catch {
-      showLoadingOverlay('Engine timed out. Try lowering the depth and reanalyzing.');
-      setTimeout(hideLoadingOverlay, 2500);
-      return;
-    } finally {
-      reanalyzing = false;
+      const game = b?.game;
+      const candidate = game?.getGameId?.() ?? game?.getId?.() ?? game?.gameId ?? game?.id;
+      if (typeof candidate === 'string' || typeof candidate === 'number') gameId = String(candidate);
+    } catch {}
+    if (!gameId) {
+      const pathMatch = pageUrl.pathname.match(/\/game\/(?:live|daily)\/([^/]+)/i);
+      gameId = pathMatch?.[1] || pageUrl.searchParams.get('gameId') || pageUrl.searchParams.get('game_id');
     }
-    hideLoadingOverlay();
+    if (gameId) return { key: `${pageUrl.origin}|${gameId}`, stable: true };
+
+    const players = [...document.querySelectorAll('.player-tagline-top .user-tagline-username, .player-tagline-bottom .user-tagline-username, .board-layout-top .user-tagline-username, .board-layout-bottom .user-tagline-username, [data-cy="user-tagline-username"]')]
+      .map(el => el.textContent.trim().toLowerCase())
+      .filter(Boolean)
+      .sort();
+    return { key: `${pageUrl.origin}${pageUrl.pathname}|${players.join('|') || 'chess-game'}`, stable: false };
   }
 
-  let backfilled = false;
-  async function backfillDetection() {
-    if (backfilled || reanalyzing || !sfReady || !sfWorker) return;
-    const uciMoves = getGameMoves();
-    if (uciMoves.length < 2) return;
-    backfilled = true;
-    reanalyzing = true;
-    while (processing) await new Promise(r => setTimeout(r, 50));
-    uciSend('stop');
-    await new Promise(r => setTimeout(r, 100));
+  function readDetectionCache() {
     try {
-      const DEPTH = Math.min(ENGINE_DEPTH, 12);
-      let prevCp = await quickEval('position startpos', DEPTH);
-      if (prevCp === null) return;
-      const backfilledMoves = [];
-      for (let i = 0; i < uciMoves.length; i++) {
-        const movesStr = uciMoves.slice(0, i + 1).join(' ');
-        const cp = await quickEval('position startpos moves ' + movesStr, DEPTH);
-        if (cp === null) return;
-        const cpl = Math.min(500, Math.max(0, prevCp + cp));
-        backfilledMoves.push({ color: i % 2 === 0 ? 'w' : 'b', cpl });
-        prevCp = cp;
-      }
-      moveLog.push(...backfilledMoves);
-      recalcDetection();
-    } finally {
-      reanalyzing = false;
+      const saved = JSON.parse(localStorage.getItem(DETECTION_CACHE_KEY) || '{}');
+      return saved && typeof saved === 'object' ? saved : {};
+    } catch { return {}; }
+  }
+
+  function saveDetectionState() {
+    if (!activeDetectionKey) return;
+    try {
+      const cache = readDetectionCache();
+      cache[activeDetectionKey] = {
+        savedAt: Date.now(),
+        gameMoves: getGameMoves(),
+        moveLog: moveLog.map(move => ({ color: move.color, cpl: move.cpl })),
+        detection: { ...detection }
+      };
+      const recent = Object.entries(cache).sort((a, b) => (a[1]?.savedAt || 0) - (b[1]?.savedAt || 0)).slice(-20);
+      localStorage.setItem(DETECTION_CACHE_KEY, JSON.stringify(Object.fromEntries(recent)));
+    } catch {}
+  }
+
+  function syncDetectionGame() {
+    const identity = getDetectionGameIdentity();
+    if (!identity.key) return false;
+    if (identity.key === activeDetectionKey) return true;
+    const cache = readDetectionCache();
+    const saved = cache[identity.key];
+    const currentMoves = getGameMoves();
+    const savedMoves = Array.isArray(saved?.gameMoves) ? saved.gameMoves : [];
+    const commonLength = Math.min(currentMoves.length, savedMoves.length);
+    const historyMatches = savedMoves.slice(0, commonLength).every((move, i) => move === currentMoves[i]);
+    if (!identity.stable && savedMoves.length && currentMoves.length < savedMoves.length && historyMatches) return false;
+
+    activeDetectionKey = identity.key;
+    moveLog.length = 0;
+    Object.assign(detection, {
+      oppMoves: 0, totalCpl: 0, bestMoves: 0, topThree: 0, blunders: 0,
+      lastOppEvalCp: null, lastOppEvalFen: null, lastMyEvalCp: null, lastMyEvalFen: null
+    });
+    const canRestore = saved && (identity.stable || (savedMoves.length <= currentMoves.length && historyMatches));
+    if (canRestore) {
+      const savedLog = Array.isArray(saved.moveLog) ? saved.moveLog : [];
+      moveLog.push(...savedLog.filter(move => (move.color === 'w' || move.color === 'b') && Number.isFinite(move.cpl)));
+      if (saved.detection && typeof saved.detection === 'object') Object.assign(detection, saved.detection);
     }
+    recalcDetection();
+    return true;
   }
 
   const pieceToFen = { 'wp':'P','wn':'N','wb':'B','wr':'R','wq':'Q','wk':'K', 'bp':'p','bn':'n','bb':'b','br':'r','bq':'q','bk':'k' };
@@ -851,13 +833,9 @@
 
   let processing = false, lastFen = '', lastMovedFen = '', drawing = false, lastOppFen = '', lastOppMove = null, waitingForOpponent = false;
   async function tick() {
-    if ((!window.chessHelper.autoPlay && !window.chessHelper.showArrow && !window.chessHelper.hiddenArrow && !window.chessHelper.showOpponent && !window.chessHelper.showEval && !window.chessHelper.detection) || processing || reanalyzing) return;
+    if ((!window.chessHelper.autoPlay && !window.chessHelper.showArrow && !window.chessHelper.hiddenArrow && !window.chessHelper.showOpponent && !window.chessHelper.showEval && !window.chessHelper.detection) || processing) return;
     if (!inActiveGame()) return;
-    if (window.chessHelper.detection && !moveLog.length && !backfilled && sfReady) {
-      // Backfill historical moves once they exist; an empty opening position
-      // must not prevent the normal first-move analysis/autoplay path.
-      if (getGameMoves().length >= 2) backfillDetection();
-    }
+    if (window.chessHelper.detection && !syncDetectionGame()) return;
     const myTurn = isMyTurn();
     if (!myTurn) {
       waitingForOpponent = false;
@@ -869,6 +847,7 @@
       clearShading();
       if (fen) {
         try {
+          thinkingEl.classList.add('active');
           const candidates = await queryLocal(fen, ENGINE_DEPTH);
           const om = candidates.length ? candidates[0].move : null;
           if (candidates.length && candidates[0].cp !== null) {
@@ -876,24 +855,19 @@
               const rawMyCpl = detection.lastMyEvalCp + candidates[0].cp;
               const myCpl = Number.isFinite(rawMyCpl) ? Math.min(500, Math.max(0, rawMyCpl)) : 500;
               moveLog.push({ color: getMyColor(), cpl: myCpl });
-              if (detTarget === getMyColor()) {
-                detection.oppMoves++; detection.totalCpl += myCpl;
-                if (myCpl <= 5) detection.bestMoves++;
-                else if (myCpl <= 20) detection.topThree++;
-                if (myCpl > 200) detection.blunders++;
-                updateDetectionUI();
-              }
+              recalcDetection();
               detection.lastMyEvalCp = null; detection.lastMyEvalFen = null;
             }
             detection.lastOppEvalCp = candidates[0].cp;
             detection.lastOppEvalFen = fen;
-if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
+            saveDetectionState();
+            if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
           }
           lastOppFen = fen;
           lastOppMove = om;
           if (window.chessHelper.showOpponent && om) drawOpponentArrow(om);
           else clearOpponentArrow();
-        } catch {} finally { processing = false; }
+        } catch {} finally { processing = false; thinkingEl.classList.remove('active'); }
       } else { clearOpponentArrow(); processing = false; }
       return;
     }
@@ -916,18 +890,11 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
         const cpl = Number.isFinite(rawCpl) ? Math.min(500, Math.max(0, rawCpl)) : 500;
         const oppColor = getMyColor() === 'w' ? 'b' : 'w';
         moveLog.push({ color: oppColor, cpl });
-        if (detTarget !== getMyColor()) {
-          detection.oppMoves++;
-          detection.totalCpl += cpl;
-          if (cpl <= 5) detection.bestMoves++;
-          else if (cpl <= 20) detection.topThree++;
-          if (cpl > 200) detection.blunders++;
-          updateDetectionUI();
-        }
+        recalcDetection();
         detection.lastOppEvalCp = null;
         detection.lastOppEvalFen = null;
       }
-      if (result.cp !== null) { detection.lastMyEvalCp = result.cp; detection.lastMyEvalFen = fen; }
+      if (result.cp !== null) { detection.lastMyEvalCp = result.cp; detection.lastMyEvalFen = fen; saveDetectionState(); }
       lastFen = fen;
       if (window.chessHelper.hiddenArrow) { drawShading(mv); clearArrows(); }
       else if (window.chessHelper.showArrow) { drawNativeArrow(mv); clearShading(); }
@@ -966,6 +933,7 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
   }
   watch();
   setInterval(tick, 500);
+  window.addEventListener('pagehide', saveDetectionState);
 
   const root = document.createElement('div'); root.id = 'chess-helper-root';
   const bubble = document.createElement('div'); bubble.id = 'chess-helper-bubble';
@@ -1046,7 +1014,6 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
       <div class="ch-detect-gauge"><div class="ch-detect-fill" id="ch-det-fill"></div></div>
       <div class="ch-detect-verdict" id="ch-det-verdict">Play a game to start detection</div>
       <div style="display:flex;gap:6px;margin-top:4px;">
-        <button class="ch-detect-reset" id="ch-det-reanalyze" style="flex:1;">Re-analyze game</button>
         <button class="ch-detect-reset" id="ch-det-reset" style="flex:1;">Reset stats</button>
       </div>
     </div>
@@ -1105,7 +1072,6 @@ if (window.chessHelper.showEval) updateEval(-candidates[0].cp, getMyColor());
     };
   });
   panel.querySelector('#ch-det-reset').onclick = resetDetection;
-  panel.querySelector('#ch-det-reanalyze').onclick = reanalyzeGame;
   panel.querySelector('#ch-det-black').onclick = () => {
     if (detTarget === 'b') return;
     detTarget = 'b';
