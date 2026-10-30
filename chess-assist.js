@@ -1045,7 +1045,7 @@
       </div>
       <button class="ch-detect-reset" id="ch-skins-reset">Reset all skins</button>
     </div>
-    <div style="text-align:center;padding:8px 0 2px;font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:0.3px;">made by <a href="https://github.com/ThatKidGlitchy/chess-hacks" target="_blank" style="color:rgba(255,255,255,0.35);text-decoration:underline;">ThatKidGlitchy</a></div>
+    <div style="text-align:center;padding:8px 0 2px;font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:0.3px;">made by <a href="https://github.com/ThatKidGlitchy/chess-hacks" target="_blank" rel="noopener noreferrer" style="color:rgba(255,255,255,0.35);text-decoration:underline;">ThatKidGlitchy</a> · <a href="https://github.com/ThatKidGlitchy/chess-hacks/blob/main/Chess-Assist-Disclaimer.md" target="_blank" rel="noopener noreferrer" style="color:rgba(255,255,255,0.55);text-decoration:underline;">Terms &amp; Disclaimer</a></div>
   `;
   const wrap = document.createElement('div'); wrap.id = 'chess-helper-wrap';
   const evalBar = document.createElement('div'); evalBar.id = 'ch-eval-bar';
